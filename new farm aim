@@ -1,0 +1,322 @@
+--[[
+    Syrex Hub: Sniper or Die Edition
+    Fully Deobfuscated & Optimized Clean Source (Ultimate Screen Stabilization Fix)
+--]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- Configuration State
+local DaemonConfig = {
+    AimbotEnabled = false,
+    SilentAim = false,
+    AutoFarm = false,
+    KillAll = false,
+    TargetPart = "Head", 
+    MinValidHeight = 20,   
+    MaxValidHeight = 140   
+}
+
+-- Modern Minimalist Draggable UI Framework
+local SyrexHub = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local TopBar = Instance.new("Frame")
+local Title = Instance.new("TextLabel")
+local ContentContainer = Instance.new("ScrollingFrame")
+local UIListLayout = Instance.new("UIListLayout")
+local FloatingIcon = Instance.new("TextButton")
+
+-- Initialize ScreenGui Container
+SyrexHub.Name = "SyrexHub_Core"
+SyrexHub.ResetOnSpawn = false
+SyrexHub.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+if syn then syn.protect_gui(SyrexHub) end
+SyrexHub.Parent = game:GetService("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
+
+-- Floating Toggle Icon Initialization
+FloatingIcon.Name = "FloatingToggle"
+FloatingIcon.Size = UDim2.new(0, 50, 0, 50)
+FloatingIcon.Position = UDim2.new(0, 20, 0, 20)
+FloatingIcon.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+FloatingIcon.Text = "S"
+FloatingIcon.TextColor3 = Color3.fromRGB(0, 255, 150)
+FloatingIcon.Font = Enum.Font.GothamBold
+FloatingIcon.TextSize = 22
+FloatingIcon.BorderSizePixel = 0
+FloatingIcon.Parent = SyrexHub
+
+local UICorner_Float = Instance.new("UICorner")
+UICorner_Float.CornerRadius = UDim.new(0, 12)
+UICorner_Float.Parent = FloatingIcon
+
+-- Core Hub Architecture
+MainFrame.Name = "MainPanel"
+MainFrame.Size = UDim2.new(0, 360, 0, 420)
+MainFrame.Position = UDim2.new(0.5, -180, 0.5, -210)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 22)
+MainFrame.BorderSizePixel = 0
+MainFrame.Visible = false
+MainFrame.Parent = SyrexHub
+
+local UICorner_Main = Instance.new("UICorner")
+UICorner_Main.CornerRadius = UDim.new(0, 8)
+UICorner_Main.Parent = MainFrame
+
+TopBar.Name = "TopBar"
+TopBar.Size = UDim2.new(1, 0, 0, 40)
+TopBar.BackgroundColor3 = Color3.fromRGB(28, 28, 32)
+TopBar.BorderSizePixel = 0
+TopBar.Parent = MainFrame
+
+local UICorner_Top = Instance.new("UICorner")
+UICorner_Top.CornerRadius = UDim.new(0, 8)
+UICorner_Top.Parent = TopBar
+
+Title.Name = "HubTitle"
+Title.Size = UDim2.new(1, -20, 1, 0)
+Title.Position = UDim2.new(0, 15, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "SYREX HUB — Sniper or Die"
+Title.TextColor3 = Color3.fromRGB(240, 240, 245)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 14
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = TopBar
+
+ContentContainer.Name = "Container"
+ContentContainer.Size = UDim2.new(1, -20, 1, -60)
+ContentContainer.Position = UDim2.new(0, 10, 0, 50)
+ContentContainer.BackgroundTransparency = 1
+ContentContainer.BorderSizePixel = 0
+ContentContainer.ScrollBarThickness = 4
+ContentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+ContentContainer.Parent = MainFrame
+
+UIListLayout.Parent = ContentContainer
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 8)
+
+-- Smooth Draggable Implementation Engine
+local function BindInterfaceDrag(frame, dragHandle)
+    local dragging, dragInput, dragStart, startPos
+    
+    dragHandle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    dragHandle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(
+                startPos.X.Scale, 
+                startPos.X.Offset + delta.X, 
+                startPos.Y.Scale, 
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+BindInterfaceDrag(MainFrame, TopBar)
+BindInterfaceDrag(FloatingIcon, FloatingIcon)
+
+-- Component Generation Factory
+local function CreateInterfaceToggle(titleText, configKey, callback)
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(1, -10, 0, 40)
+    Button.BackgroundColor3 = Color3.fromRGB(32, 32, 38)
+    Button.Font = Enum.Font.GothamSemibold
+    Button.TextSize = 13
+    Button.BorderSizePixel = 0
+    Button.Parent = ContentContainer
+    
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 6)
+    UICorner.Parent = Button
+    
+    local function UpdateVisualState()
+        if DaemonConfig[configKey] then
+            Button.Text = titleText .. " : [ ON ]"
+            Button.TextColor3 = Color3.fromRGB(0, 255, 140)
+        else
+            Button.Text = titleText .. " : [ OFF ]"
+            Button.TextColor3 = Color3.fromRGB(200, 70, 70)
+        end
+    end
+    
+    Button.MouseButton1Click:Connect(function()
+        DaemonConfig[configKey] = not DaemonConfig[configKey]
+        UpdateVisualState()
+        if callback then callback(DaemonConfig[configKey]) end
+    end)
+    
+    UpdateVisualState()
+    ContentContainer.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 10)
+    return Button
+end
+
+-- Menu Visibility Controller
+FloatingIcon.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- Core Targeted Validation Utility
+local function SecureVerifyTarget(player)
+    if player and player ~= LocalPlayer and player.Character then
+        local character = player.Character
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        local head = character:FindFirstChild("Head")
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        
+        if rootPart and head and humanoid and humanoid.Health > 0 then
+            local currentY = rootPart.Position.Y
+            if currentY >= DaemonConfig.MinValidHeight and currentY <= DaemonConfig.MaxValidHeight then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- Advanced Target Acquisition Engine
+local function SelectOptimalTarget()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    
+    for _, targetPlayer in ipairs(Players:GetPlayers()) do
+        if SecureVerifyTarget(targetPlayer) then
+            local headPart = targetPlayer.Character.Head
+            local screenPos, onScreen = Camera:WorldToViewportPoint(headPart.Position)
+            
+            if onScreen or DaemonConfig.SilentAim then
+                local mouseLocation = UserInputService:GetMouseLocation()
+                local distance = (Vector2.new(screenPos.X, screenPos.Y) - mouseLocation).Magnitude
+                
+                if distance < shortestDistance then
+                    closestPlayer = targetPlayer
+                    shortestDistance = distance
+                end
+            end
+        end
+    end
+    return closestPlayer
+end
+
+-- Core Automation Toggles
+CreateInterfaceToggle("Silent Aim Matrix", "SilentAim")
+CreateInterfaceToggle("Active Lock Aimbot", "AimbotEnabled")
+
+-- PERFECTED & SCREEN STABILIZED KILLALL LOOP
+CreateInterfaceToggle("Direct Teleport KillAll", "KillAll", function(enabled)
+    if enabled then
+        task.spawn(function()
+            while DaemonConfig.KillAll do
+                local hasTargets = false
+                
+                for _, enemyPlayer in ipairs(Players:GetPlayers()) do
+                    if not DaemonConfig.KillAll then break end
+                    
+                    while DaemonConfig.KillAll and SecureVerifyTarget(enemyPlayer) and LocalPlayer.Character do
+                        hasTargets = true
+                        local myRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        local enemyHead = enemyPlayer.Character:FindFirstChild("Head")
+                        local enemyHumanoid = enemyPlayer.Character:FindFirstChildOfClass("Humanoid")
+                        
+                        if myRoot and enemyHead and enemyHumanoid and enemyHumanoid.Health > 0 then
+                            -- FIXED: Camera updates directly synchronized with the movement vector to stop shaking
+                            local overheadPosition = enemyHead.Position + Vector3.new(0, 4.5, 0)
+                            
+                            -- Character and Camera are forced into position simultaneously 
+                            myRoot.CFrame = CFrame.new(overheadPosition, enemyHead.Position)
+                            Camera.CFrame = CFrame.new(Camera.CFrame.Position, enemyHead.Position)
+                        else
+                            break 
+                        end
+                        task.wait(0.015) -- Tweaked speed to eliminate rendering lag shaking
+                    end
+                end
+                
+                if not hasTargets then
+                    task.wait(0.1)
+                end
+            end
+        end)
+    end
+end)
+
+CreateInterfaceToggle("Automated Stage Farm", "AutoFarm", function(enabled)
+    if enabled then
+        task.spawn(function()
+            while DaemonConfig.AutoFarm and task.wait(0.5) do
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    local targetObjective = workspace:FindFirstChild("ObjectivePart") or workspace:FindFirstChild("TargetStage")
+                    if targetObjective and targetObjective:IsA("BasePart") then
+                        LocalPlayer.Character.HumanoidRootPart.CFrame = targetObjective.CFrame
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- Combat Execution Subsystem (Only runs when standalone Aimbot is on, bypasses during KillAll)
+RunService.RenderStepped:Connect(function()
+    if DaemonConfig.AimbotEnabled and not DaemonConfig.KillAll and LocalPlayer.Character then
+        local currentTarget = SelectOptimalTarget()
+        if currentTarget and currentTarget.Character then
+            local aimPart = currentTarget.Character:FindFirstChild("Head")
+            if aimPart then
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, aimPart.Position)
+            end
+        end
+    end
+end)
+
+-- Global Interception Hook Initialization
+local MetaTable = getrawmetatable(game)
+local IndexHook = MetaTable.__index
+local NamecallHook = MetaTable.__namecall
+setreadonly(MetaTable, false)
+
+MetaTable.__namecall = newcclosure(function(Self, ...)
+    local ExecutionArguments = {...}
+    local CallMethod = getnamecallmethod()
+    
+    if DaemonConfig.SilentAim and CallMethod == "FireServer" then
+        local targetPlayer = SelectOptimalTarget()
+        if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
+            for index, argument in ipairs(ExecutionArguments) do
+                if typeof(argument) == "Vector3" then
+                    ExecutionArguments[index] = targetPlayer.Character.Head.Position
+                    break
+                elseif typeof(argument) == "CFrame" then
+                    ExecutionArguments[index] = CFrame.new(targetPlayer.Character.Head.Position)
+                    break
+                end
+            end
+            return NamecallHook(Self, unpack(ExecutionArguments))
+        end
+    end
+    
+    return NamecallHook(Self, ...)
+end)
+
+setreadonly(MetaTable, true)
